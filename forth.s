@@ -1,16 +1,16 @@
-%DEFINE LINE_SIZE 4096
+%DEFINE LINE_SIZE 1024
 %DEFINE INITIAL_DATA_SEGMENT_SIZE 65536
 
 section .bss
 
 %MACRO PUSHRSP 1
-    lea ebp, [ebp-4]
-    mov [ebp], %1
+	lea ebp, [ebp-4]
+	mov [ebp], %1
 %ENDMACRO
 
 %MACRO POPRSP 1
-    mov %1, [ebp]
-    lea ebp, [ebp+4]
+	mov %1, [ebp]
+	lea ebp, [ebp+4]
 %ENDMACRO
 
 %DEFINE F_HIDDEN 80h
@@ -19,59 +19,57 @@ section .bss
 
 %DEFINE LAST 0
 %MACRO MCREATE 2-3 0
-    align 4, db 0
-    global %2
+	align 4, db 0
+	global %2
 %2:
-    dd LAST
+	dd LAST
 %define LAST %2
-    db %3
-    db .name_end - .name
+	db %3
+	db .name_end - .name
 .name:
-    db %1
+	db %1
 .name_end:
-    align 4, db 0
+	align 4, db 0
 .link_back:
 	dd %2
 .code:
 %ENDMACRO
 
 %MACRO CODE 0
-    dd .data
+	dd .data
 .data:
 %ENDMACRO
 
 %MACRO WORDDEF 0
-    dd DOCOL.data
+	dd DOCOL.data
 .data:
 %ENDMACRO
 
 %MACRO NEXT 0
-    lodsd
-    jmp [eax]
+	lodsd
+	jmp [eax]
 %ENDMACRO
 
 %MACRO VARIABLE 2-3 0
 MCREATE %1, %2
-    dd DOVAR.data
-NEXT
+	dd DOVAR.data
 .data:
 .var:
-    dd %3
+	dd %3
 %ENDMACRO
 
 %MACRO CONSTANT 2-3 0
 MCREATE %1, %2
-    dd DOCON.data
-NEXT
+	dd DOCON.data
 .data:
 .var:
-    dd %3
+	dd %3
 %ENDMACRO
 
 
 
 return_stack:
-    resd 4096
+	resd 4096
 return_stack_top:
 
 section .text
@@ -79,55 +77,53 @@ global _start
 
 _start:
 
-    xor ebx, ebx
-    mov eax, 45
-    int 80h
-    mov [LINE_BUFFER.data], eax
-    add eax, LINE_SIZE
-    mov ebx, eax
-    mov eax, 45
-    int 80h
-    mov [HERE.var], eax
-    add eax, INITIAL_DATA_SEGMENT_SIZE
-    mov ebx, eax
-    mov eax, 45
-    int 80h
-    
-    mov ebp, return_stack_top
-    mov esi, cold_start
+	xor ebx, ebx
+	mov eax, 45
+	int 80h
+	mov [LINE_BUFFER.data], eax
+	add eax, 1024
+	mov [HERE.var], eax
+	add eax, INITIAL_DATA_SEGMENT_SIZE
+	mov ebx, eax
+	mov eax, 45
+	int 80h
+	
+	mov ebp, return_stack_top
+	mov esi, cold_start
 NEXT
 
-    align 4, db 0
+	align 4, db 0
 cold_start:
-    dd TEST.code
+	dd TEST.code
 
 VARIABLE 'HERE', HERE
 VARIABLE 'STATE', STATE
 VARIABLE 'LATEST', LATEST, QUIT
 VARIABLE 'S0', SZ
-VARIABLE 'BASE', BASE
+VARIABLE 'BASE', BASE, 0x0A
 
 CONSTANT 'R0', RZ, return_stack_top
 MCREATE 'DOCOL', DOCOL
 	dd DOVAR.data
 .data:
 PUSHRSP esi
-    add eax, 4
-    mov esi, eax
+	add eax, 4
+	mov esi, eax
 NEXT
 
 MCREATE 'DOVAR', DOVAR
 	dd DOVAR.data
 .data:
 	add eax, 4
-    push eax
+	push eax
 NEXT
 
 MCREATE 'DOCON', DOCON
 	dd DOVAR.data
 .data:
 	add eax, 4
-    push dword [eax]
+	mov ebx, [eax]
+	push ebx
 NEXT
 
 CONSTANT 'F_HIDDEN', __F_HIDDEN, F_HIDDEN
@@ -138,31 +134,31 @@ CONSTANT 'F_COMPILE_ONLY', __F_COMPILE_ONLY, F_COMPILE_ONLY
 
 MCREATE '!', STORE
 CODE
-    pop eax
-    pop ebx
-    mov [eax], ebx
+	pop eax
+	pop ebx
+	mov [eax], ebx
 NEXT
 
 MCREATE '@', FETCH
 CODE
-    pop ebx
-    mov eax, [ebx]
-    push eax
+	pop ebx
+	mov eax, [ebx]
+	push eax
 NEXT
 
 MCREATE 'C!', CSTORE
 CODE
-    pop eax
-    pop ebx
-    mov [eax], bl
+	pop eax
+	pop ebx
+	mov [eax], bl
 NEXT
 
 MCREATE 'C@', CFETCH
 CODE
-    pop ebx
-    xor eax, eax
-    mov al, [ebx]
-    push eax
+	pop ebx
+	xor eax, eax
+	mov al, [ebx]
+	push eax
 NEXT
 
 MCREATE 'CELL+', CELLPLUS
@@ -199,272 +195,272 @@ WORDDEF
 
 MCREATE '*', MUL
 CODE
-    pop eax
-    pop ebx
-    imul ebx
-    push eax
+	pop eax
+	pop ebx
+	imul ebx
+	push eax
 NEXT
 
 MCREATE '+', ADD
 CODE
-    pop eax
-    add [esp], eax
+	pop eax
+	add [esp], eax
 NEXT
 
 MCREATE '-', SUB
 CODE
-    pop eax
-    sub [esp], eax
+	pop eax
+	sub [esp], eax
 NEXT
 
 MCREATE '/MOD', SLASHMOD
 CODE
-    pop ebx
-    pop eax
-    xor edx, edx
-    idiv ebx
-    push edx
-    push eax
+	pop ebx
+	pop eax
+	xor edx, edx
+	idiv ebx
+	push edx
+	push eax
 NEXT
 
 MCREATE '1+', ONEPLUS
 CODE
-    inc dword [esp]
+	inc dword [esp]
 NEXT
 
 MCREATE '1-', ONEMINUS
 CODE
-    dec dword [esp]
+	dec dword [esp]
 NEXT
 
 MCREATE '=', EQUAL
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    setne al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	setne al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '<>', NEQUAL
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    sete al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	sete al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '<', LT
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    setge al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	setge al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '>', GT
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    setle al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	setle al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '<=', LE
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    setg al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	setg al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '>=', GE
 CODE
-    pop eax
-    pop ebx
-    cmp ebx, eax
-    setl al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	pop ebx
+	cmp ebx, eax
+	setl al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0=', ZEQUAL
 CODE
-    pop eax
-    test eax, eax
-    setne al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	setne al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0<>', ZNEQUAL
 CODE
-    pop eax
-    test eax, eax
-    sete al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	sete al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0<', ZLT
 CODE
-    pop eax
-    test eax, eax
-    setge al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	setge al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0>', ZGT
 CODE
-    pop eax
-    test eax, eax
-    setle al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	setle al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0<=', ZLE
 CODE
-    pop eax
-    test eax, eax
-    setg al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	setg al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 MCREATE '0>=', ZGE
 CODE
-    pop eax
-    test eax, eax
-    setl al
-    movzx eax, al
-    dec eax
-    push eax
+	pop eax
+	test eax, eax
+	setl al
+	movzx eax, al
+	dec eax
+	push eax
 NEXT
 
 
 MCREATE 'AND', AND
 CODE
-    pop eax
-    and [esp], eax
+	pop eax
+	and [esp], eax
 NEXT
 
 MCREATE 'OR', OR
 CODE
-    pop eax
-    or [esp], eax
+	pop eax
+	or [esp], eax
 NEXT
 
 MCREATE 'XOR', XOR
 CODE
-    pop eax
-    xor [esp], eax
+	pop eax
+	xor [esp], eax
 NEXT
 
 MCREATE 'INVERT', INVERT
 CODE
-    not dword [esp]
+	not dword [esp]
 NEXT
 
 
 MCREATE 'DUP', DUP
 CODE
-    mov eax, [esp]
-    push eax
+	mov eax, [esp]
+	push eax
 NEXT
 
 MCREATE '2DUP', TWODUP
 CODE
-    mov eax, [esp+4]
-    mov ebx, [esp]
-    push eax
-    push ebx
+	mov eax, [esp+4]
+	mov ebx, [esp]
+	push eax
+	push ebx
 NEXT
 
 MCREATE 'OVER', OVER
 CODE
-    mov eax, [esp+4]
-    push eax
+	mov eax, [esp+4]
+	push eax
 NEXT
 
 MCREATE '2OVER', TWOOVER
 CODE
-    mov eax, [esp+12]
-    mov ebx, [esp+8]
-    push eax
-    push ebx
+	mov eax, [esp+12]
+	mov ebx, [esp+8]
+	push eax
+	push ebx
 NEXT
 
 MCREATE 'SWAP', SWAP
 CODE
-    pop eax
-    pop ebx
-    push eax
-    push ebx
+	pop eax
+	pop ebx
+	push eax
+	push ebx
 NEXT
 
 MCREATE '2SWAP', TWOSWAP
 CODE
-    pop eax
-    pop ebx
-    pop ecx
-    pop edx
-    push ebx
-    push eax
-    push edx
-    push ecx
+	pop eax
+	pop ebx
+	pop ecx
+	pop edx
+	push ebx
+	push eax
+	push edx
+	push ecx
 NEXT
 
 MCREATE 'DROP', DROP
 CODE
-    pop eax
+	pop eax
 NEXT
 
 MCREATE '2DROP', TWODROP
 CODE
-    pop eax
-    pop eax
+	pop eax
+	pop eax
 NEXT
 
 MCREATE 'ROT', ROT
 CODE
-    pop eax
-    pop ebx
-    pop ecx
-    push ebx
-    push eax
-    push ecx
+	pop eax
+	pop ebx
+	pop ecx
+	push ebx
+	push eax
+	push ecx
 NEXT
 
 MCREATE '-ROT', NROT
 CODE
-    pop eax
-    pop ebx
-    pop ecx
-    push eax
-    push ecx
-    push ebx
+	pop eax
+	pop ebx
+	pop ecx
+	push eax
+	push ecx
+	push ebx
 NEXT
 
 MCREATE 'DSP@', DSPFETCH
@@ -508,149 +504,149 @@ NEXT
 
 MCREATE 'EMIT', EMIT
 CODE
-    pop eax
-    mov ebx, 1
-    mov [EMIT.scratch], al
-    mov ecx, EMIT.scratch
-    mov edx, 1
-    mov eax, 4
-    int 80h
+	pop eax
+	mov ebx, 1
+	mov [EMIT.scratch], al
+	mov ecx, EMIT.scratch
+	mov edx, 1
+	mov eax, 4
+	int 80h
 NEXT
 .scratch:
-    db 0
+	db 0
 
 MCREATE 'LIT', LIT
 CODE
-    lodsd
-    push eax
+	lodsd
+	push eax
 NEXT
 
 MCREATE "BRANCH", BRANCH
 CODE
-    add esi, [esi]
+	add esi, [esi]
 NEXT
 
 MCREATE "0BRANCH", ZBRANCH
 CODE
-    pop eax
-    test eax, eax
-    jz .zero
-    lodsd
+	pop eax
+	test eax, eax
+	jz .zero
+	lodsd
 NEXT
 .zero:
-    add esi, [esi]
+	add esi, [esi]
 NEXT
 
 MCREATE 'SHUTDOWN', SHUTDOWN
 CODE
-    mov eax, 1
-    mov ebx, 0
-    int 80h
+	mov eax, 1
+	mov ebx, 0
+	int 80h
 NEXT
 
 MCREATE 'EXIT', EXIT
 CODE
-    POPRSP esi
+	POPRSP esi
 NEXT
 
 
 MCREATE 'KEY?', KEYQ
 CODE
-    mov eax, 168
-    mov ebx, .poll_fd
-    mov ecx, 1
-    mov edx, 0
-    int 80h
-    cmp eax, 1
-    setne al
-    movzx eax, al
-    push eax
+	mov eax, 168
+	mov ebx, .poll_fd
+	mov ecx, 1
+	mov edx, 0
+	int 80h
+	cmp eax, 1
+	setne al
+	movzx eax, al
+	push eax
 NEXT
 .poll_fd:
-    dd 1
-    dw 1
+	dd 1
+	dw 1
 .poll_revents:
-    dw 0
+	dw 0
 
 MCREATE 'CANONICAL', CANONICAL
 CODE
-    mov eax, 54
-    mov ebx, 0
-    mov ecx, 5401h
-    mov edx, .termios
-    int 80h
-    
-    or dword [.l_flag], 0x0A
-    
-    mov eax, 54
-    mov ebx, 0
-    mov ecx, 5402h
-    mov edx, .termios
-    int 80h
-    
+	mov eax, 54
+	mov ebx, 0
+	mov ecx, 5401h
+	mov edx, .termios
+	int 80h
+	
+	or dword [.l_flag], 0x0A
+	
+	mov eax, 54
+	mov ebx, 0
+	mov ecx, 5402h
+	mov edx, .termios
+	int 80h
+	
 NEXT
 .termios:
 .i_flag:
-    dd 0
+	dd 0
 .o_flag:
-    dd 0
+	dd 0
 .c_flag:
-    dd 0
+	dd 0
 .l_flag:
-    dd 0
-    db 0
-    times 19 db 0
+	dd 0
+	db 0
+	times 19 db 0
 
 MCREATE 'UNCANONICAL', UNCANONICAL
 CODE
-    mov eax, 54
-    mov ebx, 0
-    mov ecx, 5401h
-    mov edx, .termios
-    int 80h
-    
-    and dword [.l_flag], dword ~(0x0A)
-    
-    mov eax, 54
-    mov ebx, 0
-    mov ecx, 5402h
-    mov edx, .termios
-    int 80h
-    
+	mov eax, 54
+	mov ebx, 0
+	mov ecx, 5401h
+	mov edx, .termios
+	int 80h
+	
+	and dword [.l_flag], dword ~(0x0A)
+	
+	mov eax, 54
+	mov ebx, 0
+	mov ecx, 5402h
+	mov edx, .termios
+	int 80h
+	
 NEXT
 .termios:
 .i_flag:
-    dd 0
+	dd 0
 .o_flag:
-    dd 0
+	dd 0
 .c_flag:
-    dd 0
+	dd 0
 .l_flag:
-    dd 0
-    db 0
-    times 19 db 0
+	dd 0
+	db 0
+	times 19 db 0
 
 MCREATE 'KEY', KEY
 CODE
-    mov eax, 3
-    mov ebx, 0
-    mov ecx, .buf
-    mov edx, 1
-    int 80h
-    
-    test eax, eax
-    jle .exit
-    mov al, [.buf]
-    movzx eax, al
-    push eax
+	mov eax, 3
+	mov ebx, 0
+	mov ecx, .buf
+	mov edx, 1
+	int 80h
+	
+	test eax, eax
+	jle .exit
+	mov al, [.buf]
+	movzx eax, al
+	push eax
 NEXT
 .exit:
-    mov eax, 1
-    mov ebx, 0
-    int 80h
+	mov eax, 1
+	mov ebx, 0
+	int 80h
 .buf:
-    db 0
-    
+	db 0
+	
 MCREATE '>CFA', TOCFA
 CODE
 	pop edi
@@ -739,60 +735,79 @@ WORDDEF
 	dd SWAP.code
 	dd ONEMINUS.code
 	dd DUP.code
-    dd ZBRANCH.code
-    dd .1-$
-    dd _ALIGN.code
-    dd DOVAR.code
-    dd COMMA.code
-    dd EXIT.code
-    
+	dd ZBRANCH.code
+	dd .1-$
+	dd _ALIGN.code
+	dd DOVAR.code
+	dd COMMA.code
+	dd EXIT.code
+	
 MCREATE 'WORD', _WORD
 WORDDEF
-    dd LIT.code, 0
+	dd LIT.code, 0
 .1:
-    dd DROP.code
-    dd KEY.code
-    dd DUP.code
-    dd DUP.code
-    dd EMIT.code
-    dd LIT.code, 0x20
-    dd NEQUAL.code
-    dd ZBRANCH.code
-    dd .1-$ 
-    dd LIT.code, .buf
-    dd DUP.code
-    dd NROT.code
-    dd CSTORE.code
-    dd ONEPLUS.code
+	dd DROP.code
+	dd KEY.code
+	dd DUP.code
+	dd DUP.code
+	dd EMIT.code
+	dd LIT.code, 0x20
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .1-$ 
+	dd LIT.code, .buf
+	dd DUP.code
+	dd NROT.code
+	dd CSTORE.code
+	dd ONEPLUS.code
 .2:
-    dd DUP.code
-    dd KEY.code
-    dd DUP.code
-    dd DUP.code
-    dd EMIT.code
-    dd LIT.code, 0x20
-    dd NEQUAL.code
-    dd ZBRANCH.code
-    dd .3-$
-    dd SWAP.code
-    dd CSTORE.code
-    dd ONEPLUS.code
-    dd BRANCH.code
-    dd .2-$
+	dd DUP.code
+	dd KEY.code
+	dd DUP.code
+	dd DUP.code
+	dd EMIT.code
+	dd LIT.code, 0x20
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .3-$
+	dd SWAP.code
+	dd CSTORE.code
+	dd ONEPLUS.code
+	dd BRANCH.code
+	dd .2-$
 .3:
-    dd DROP.code
-    dd DROP.code
-    dd LIT.code, .buf
-    dd SUB.code
-    dd LIT.code, .buflen
-    dd STORE.code
-    dd LIT.code, .buflen
-    dd EXIT.code
+	dd DROP.code
+	dd DROP.code
+	dd LIT.code, .buf
+	dd SUB.code
+	dd LIT.code, .buflen
+	dd STORE.code
+	dd LIT.code, .buflen
+	dd EXIT.code
 .buflen:
 	dd 0
 .buf:
-    times 32 db 0
-    
+	times 32 db 0
+
+MCREATE '.', DOT
+WORDDEF
+	dd BASE.code
+	dd FETCH.code
+	dd SLASHMOD.code
+	dd DUP.code
+	dd ZBRANCH.code
+	dd .1-$
+	dd .code
+	dd BRANCH.code
+	dd .2-$
+.1:
+	dd DROP.code
+.2:
+	dd LIT.code, '0'
+	dd ADD.code
+	dd EMIT.code
+	dd EXIT.code
+	
 MCREATE 'ACCEPT', ACCEPT
 WORDDEF
 	dd DROP.code
@@ -816,25 +831,29 @@ WORDDEF
 	dd .1-$
 .2:
 	dd DUP.code
-	dd LIT.code, 13
-	dd EQUAL.code
+	dd LIT.code, 10
+	dd NEQUAL.code
 	dd ZBRANCH.code
 	dd .3-$
+	dd DUP.code
+	dd EMIT.code
 	dd SWAP.code
 	dd DUP.code
-	dd NROT.code
+	dd ROT.code
+	dd SWAP.code
 	dd CSTORE.code
 	dd CHARPLUS.code
 	dd BRANCH.code
 	dd .1-$
 .3:
 	dd DROP.code
+	dd SWAP.code
 	dd SUB.code
 	dd EXIT.code
 	
 	
-CONSTANT 'LINE_BUFFER', LINE_BUFFER
-    
+CONSTANT 'LINE_BUFFER', LINE_BUFFER, 65
+	
 MCREATE 'COUNT', COUNT
 WORDDEF
 	dd DUP.code
@@ -848,9 +867,9 @@ MCREATE 'TYPE', TYPE
 CODE
 	pop edx
 	pop ecx
-    mov ebx, 1
-    mov eax, 4
-    int 80h
+	mov ebx, 1
+	mov eax, 4
+	int 80h
 NEXT
 
 MCREATE 'INTERPRET', INTERPRET
@@ -861,22 +880,33 @@ NEXT
 
 MCREATE 'TEST', TEST
 WORDDEF
-    dd UNCANONICAL.code
-    
-    dd LINE_BUFFER.code
-    dd LIT.code, 4096
-    dd ACCEPT.code
-    dd LINE_BUFFER.code
-    dd SWAP.code
-    dd TYPE.code
-    
-    dd CANONICAL.code
-    dd SHUTDOWN.code
+	dd UNCANONICAL.code
+
+	dd LIT.code, 10
+	dd BASE.code
+	dd STORE.code
+	
+	dd LINE_BUFFER.code
+	dd LIT.code, 4096
+	dd ACCEPT.code
+	dd LIT.code, 10
+	dd EMIT.code
+	dd DUP.code
+	dd DOT.code
+	dd LIT.code, 10
+	dd EMIT.code
+	dd LINE_BUFFER.code
+	dd SWAP.code
+	dd TYPE.code
+	
+	
+	dd CANONICAL.code
+	dd SHUTDOWN.code
 
 MCREATE 'QUIT', QUIT
 WORDDEF
-    dd RZ.code
-    dd RSPSTORE.code
+	dd RZ.code
+	dd RSPSTORE.code
 	dd UNCANONICAL.code
 ;    dd INTERPRET.code
-    dd BRANCH, -8
+	dd BRANCH, -8
