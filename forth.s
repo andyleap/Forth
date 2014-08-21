@@ -744,45 +744,11 @@ WORDDEF
 	
 MCREATE 'WORD', _WORD
 WORDDEF
-	dd LIT.code, 0
-.1:
-	dd DROP.code
-	dd KEY.code
-	dd DUP.code
-	dd DUP.code
-	dd EMIT.code
-	dd LIT.code, 0x20
-	dd NEQUAL.code
-	dd ZBRANCH.code
-	dd .1-$ 
-	dd LIT.code, .buf
-	dd DUP.code
-	dd NROT.code
-	dd CSTORE.code
-	dd ONEPLUS.code
-.2:
-	dd DUP.code
-	dd KEY.code
-	dd DUP.code
-	dd DUP.code
-	dd EMIT.code
-	dd LIT.code, 0x20
-	dd NEQUAL.code
-	dd ZBRANCH.code
-	dd .3-$
-	dd SWAP.code
-	dd CSTORE.code
-	dd ONEPLUS.code
-	dd BRANCH.code
-	dd .2-$
-.3:
-	dd DROP.code
-	dd DROP.code
-	dd LIT.code, .buf
-	dd SUB.code
-	dd LIT.code, .buflen
-	dd STORE.code
-	dd LIT.code, .buflen
+	
+	
+	
+	
+	
 	dd EXIT.code
 .buflen:
 	dd 0
@@ -853,6 +819,15 @@ WORDDEF
 	
 	
 CONSTANT 'LINE_BUFFER', LINE_BUFFER, 65
+VARIABLE 'LINE_BUFFER_COUNT', LINE_BUFFER_COUNT, 0
+CONSTANT 'SOURCE-ID', SOURCE_ID, 0
+
+MCREATE 'SOURCE', SOURCE
+WORDDEF
+	dd LINE_BUFFER.code
+	dd LINE_BUFFER_COUNT.code
+	dd FETCH.code
+	dd EXIT.code
 	
 MCREATE 'COUNT', COUNT
 WORDDEF
@@ -874,8 +849,16 @@ NEXT
 
 MCREATE 'INTERPRET', INTERPRET
 CODE
-
-
+	dd LIT.code, 0
+	dd LIT.code, SOURCE_ID.data
+	dd STORE.code
+	dd LINE_BUFFER.code
+	dd LIT.code, 1024
+	dd ACCEPT.code
+	dd LINE_BUFFER_COUNT.code
+	dd STORE.code
+	
+	
 NEXT
 
 MCREATE 'TEST', TEST
