@@ -1,3 +1,4 @@
+%DEFINE LINE_SIZE 4096
 %DEFINE INITIAL_DATA_SEGMENT_SIZE 65536
 
 section .bss
@@ -35,12 +36,13 @@ section .bss
 %ENDMACRO
 
 %MACRO CODE 0
-    dd %%code
-%%code:
+    dd .data
+.data:
 %ENDMACRO
 
 %MACRO WORDDEF 0
-    dd DOCOL
+    dd DOCOL.data
+.data:
 %ENDMACRO
 
 %MACRO NEXT 0
@@ -50,16 +52,18 @@ section .bss
 
 %MACRO VARIABLE 2-3 0
 MCREATE %1, %2
-    dd DOVAR
+    dd DOVAR.data
 NEXT
+.data:
 .var:
     dd %3
 %ENDMACRO
 
 %MACRO CONSTANT 2-3 0
 MCREATE %1, %2
-    dd DOCON
+    dd DOCON.data
 NEXT
+.data:
 .var:
     dd %3
 %ENDMACRO
@@ -78,31 +82,19 @@ _start:
     xor ebx, ebx
     mov eax, 45
     int 80h
+    mov [LINE_BUFFER.data], eax
+    add eax, LINE_SIZE
+    mov ebx, eax
+    mov eax, 45
+    int 80h
     mov [HERE.var], eax
     add eax, INITIAL_DATA_SEGMENT_SIZE
     mov ebx, eax
     mov eax, 45
     int 80h
+    
     mov ebp, return_stack_top
     mov esi, cold_start
-NEXT
-    align 4, db 0
-DOCOL:
-PUSHRSP esi
-    add eax, 4
-    mov esi, eax
-NEXT
-
-    align 4, db 0
-DOVAR:
-    add eax, 4
-    push eax
-NEXT
-
-    align 4, db 0
-DOCON:
-    add eax, 4
-    push dword [eax]
 NEXT
 
     align 4, db 0
@@ -116,9 +108,27 @@ VARIABLE 'S0', SZ
 VARIABLE 'BASE', BASE
 
 CONSTANT 'R0', RZ, return_stack_top
-CONSTANT 'DOCOL', __DOCOL, DOCOL
-CONSTANT 'DOVAR', __DOVAR, DOVAR
-CONSTANT 'DOCON', __DOCON, DOCON
+MCREATE 'DOCOL', DOCOL
+	dd DOVAR.data
+.data:
+PUSHRSP esi
+    add eax, 4
+    mov esi, eax
+NEXT
+
+MCREATE 'DOVAR', DOVAR
+	dd DOVAR.data
+.data:
+	add eax, 4
+    push eax
+NEXT
+
+MCREATE 'DOCON', DOCON
+	dd DOVAR.data
+.data:
+	add eax, 4
+    push dword [eax]
+NEXT
 
 CONSTANT 'F_HIDDEN', __F_HIDDEN, F_HIDDEN
 CONSTANT 'F_IMMEDIATE', __F_IMMEDIATE, F_IMMEDIATE
@@ -160,6 +170,12 @@ WORDDEF
 	dd LIT.code, 4
 	dd ADD.code
 	dd EXIT.code
+	
+MCREATE 'CELL-', CELLMINUS
+WORDDEF
+	dd LIT.code, 4
+	dd ADD.code
+	dd EXIT.code
 
 MCREATE 'CELLS', CELLS
 WORDDEF
@@ -170,6 +186,11 @@ WORDDEF
 MCREATE 'CHAR+', CHARPLUS
 WORDDEF
 	dd ONEPLUS.code
+	dd EXIT.code
+	
+MCREATE 'CHAR-', CHARMINUS
+WORDDEF
+	dd ONEMINUS.code
 	dd EXIT.code
 
 MCREATE 'CHARS', CHARS
@@ -686,7 +707,7 @@ CODE
 	mov [HERE.var], edi
 NEXT
 
-MCREATE 'ALIGN', ALIGN
+MCREATE 'ALIGN', _ALIGN
 CODE
 	mov eax, [HERE.var]
 	add eax, 3
@@ -695,8 +716,35 @@ CODE
 
 MCREATE 'CREATE', CREATE
 WORDDEF
-	dd WORD.code
-	
+	dd HERE.code
+	dd LATEST.code
+	dd FETCH.code
+	dd _ALIGN.code
+	dd COMMA.code
+	dd DUP.code
+	dd LATEST.code
+	dd STORE.code
+	dd LIT.code, 0
+	dd CCOMMA.code
+	dd _WORD.code
+	dd COUNT.code
+	dd DUP.code
+	dd CCOMMA.code
+.1:
+	dd SWAP.code
+	dd DUP.code
+	dd CFETCH.code
+	dd CCOMMA.code
+	dd CHARPLUS.code
+	dd SWAP.code
+	dd ONEMINUS.code
+	dd DUP.code
+    dd ZBRANCH.code
+    dd .1-$
+    dd _ALIGN.code
+    dd DOVAR.code
+    dd COMMA.code
+    dd EXIT.code
     
 MCREATE 'WORD', _WORD
 WORDDEF
@@ -745,6 +793,48 @@ WORDDEF
 .buf:
     times 32 db 0
     
+MCREATE 'ACCEPT', ACCEPT
+WORDDEF
+	dd DROP.code
+	dd DUP.code
+.1:
+	dd KEY.code
+	dd DUP.code
+	dd LIT.code, 127
+	dd EQUAL.code
+	dd ZBRANCH.code
+	dd .2-$
+	dd DROP.code
+	dd LIT.code, 8
+	dd EMIT.code
+	dd LIT.code, 32
+	dd EMIT.code
+	dd LIT.code, 8
+	dd EMIT.code
+	dd CHARMINUS.code
+	dd BRANCH.code
+	dd .1-$
+.2:
+	dd DUP.code
+	dd LIT.code, 13
+	dd EQUAL.code
+	dd ZBRANCH.code
+	dd .3-$
+	dd SWAP.code
+	dd DUP.code
+	dd NROT.code
+	dd CSTORE.code
+	dd CHARPLUS.code
+	dd BRANCH.code
+	dd .1-$
+.3:
+	dd DROP.code
+	dd SUB.code
+	dd EXIT.code
+	
+	
+CONSTANT 'LINE_BUFFER', LINE_BUFFER
+    
 MCREATE 'COUNT', COUNT
 WORDDEF
 	dd DUP.code
@@ -763,21 +853,30 @@ CODE
     int 80h
 NEXT
 
+MCREATE 'INTERPRET', INTERPRET
+CODE
+
+
+NEXT
+
 MCREATE 'TEST', TEST
 WORDDEF
     dd UNCANONICAL.code
-    dd _WORD.code
-    dd LIT.code, 10
-    dd EMIT.code
-    dd COUNT.code
+    
+    dd LINE_BUFFER.code
+    dd LIT.code, 4096
+    dd ACCEPT.code
+    dd LINE_BUFFER.code
+    dd SWAP.code
     dd TYPE.code
+    
     dd CANONICAL.code
     dd SHUTDOWN.code
 
 MCREATE 'QUIT', QUIT
 WORDDEF
     dd RZ.code
-;    dd RSPSTORE.code
+    dd RSPSTORE.code
 	dd UNCANONICAL.code
 ;    dd INTERPRET.code
     dd BRANCH, -8
