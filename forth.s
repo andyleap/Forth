@@ -743,13 +743,33 @@ WORDDEF
 	dd EXIT.code
 	
 MCREATE 'WORD', _WORD
-WORDDEF
+CODE
+PUSHRSP esi
+	mov ecx, [LINE_BUFFER_COUNT.data]
+	mov eax, [SIN.data]
+	sub ecx, eax
+	mov ebx, [LINE_BUFFER.data]
+	add ebx, eax
+	mov edi, ebx
+	mov al, ' '
+	repe SCASB
+	sub ecx, 1
+	sub edi, 1
+	mov ebx, edi
+	repne SCASB
+	sub ecx, 2
+	sub edi, 1
+	mov [SIN.data], ecx
+	mov ecx, edi
+	sub ecx, ebx
+	mov [.buflen], ecx
+	mov esi, ebx
+	mov edi, .buf
+	rep MOVSB
 	
-	
-	
-	
-	
-	dd EXIT.code
+	push dword .buflen
+POPRSP esi
+NEXT
 .buflen:
 	dd 0
 .buf:
@@ -818,9 +838,10 @@ WORDDEF
 	dd EXIT.code
 	
 	
-CONSTANT 'LINE_BUFFER', LINE_BUFFER, 65
+CONSTANT 'LINE_BUFFER', LINE_BUFFER, 0
 VARIABLE 'LINE_BUFFER_COUNT', LINE_BUFFER_COUNT, 0
 CONSTANT 'SOURCE-ID', SOURCE_ID, 0
+VARIABLE '>IN', SIN, 0
 
 MCREATE 'SOURCE', SOURCE
 WORDDEF
@@ -872,16 +893,29 @@ WORDDEF
 	dd LINE_BUFFER.code
 	dd LIT.code, 4096
 	dd ACCEPT.code
-	dd LIT.code, 10
-	dd EMIT.code
-	dd DUP.code
+	dd LINE_BUFFER_COUNT.code
+	dd STORE.code
+	
+	dd LIT.code, 10, EMIT.code
+	dd SIN.code
+	dd FETCH.code
 	dd DOT.code
-	dd LIT.code, 10
-	dd EMIT.code
-	dd LINE_BUFFER.code
-	dd SWAP.code
+	
+	dd _WORD.code
+	dd DUP.code
+	dd COUNT.code
+	dd LIT.code, 10, EMIT.code
 	dd TYPE.code
 	
+	dd LIT.code, 10, EMIT.code
+	dd SIN.code
+	dd FETCH.code
+	dd DOT.code
+	
+	dd _WORD.code
+	dd COUNT.code
+	dd LIT.code, 10, EMIT.code
+	dd TYPE.code
 	
 	dd CANONICAL.code
 	dd SHUTDOWN.code
