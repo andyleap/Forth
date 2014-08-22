@@ -13,9 +13,9 @@ section .bss
 	lea ebp, [ebp+4]
 %ENDMACRO
 
-%DEFINE F_HIDDEN 80h
-%DEFINE F_IMMEDIATE 20h
-%DEFINE F_COMPILE_ONLY 10h
+%DEFINE _F_HIDDEN 80h
+%DEFINE _F_IMMEDIATE 20h
+%DEFINE _F_COMPILE_ONLY 10h
 
 %DEFINE LAST 0
 %MACRO MCREATE 2-3 0
@@ -82,12 +82,14 @@ _start:
 	int 80h
 	mov [LINE_BUFFER.data], eax
 	add eax, 1024
-	mov [HERE.var], eax
+	mov [FORTH_WORDLIST.var], eax
 	add eax, INITIAL_DATA_SEGMENT_SIZE
 	mov ebx, eax
 	mov eax, 45
 	int 80h
 	
+	mov eax, esp
+	mov [DZ.data], eax
 	mov ebp, return_stack_top
 	mov esi, cold_start
 NEXT
@@ -101,6 +103,7 @@ VARIABLE 'S0', SZ
 VARIABLE 'BASE', BASE, 0x0A
 
 CONSTANT 'R0', RZ, return_stack_top
+CONSTANT 'D0', DZ
 MCREATE 'DOCOL', DOCOL
 	dd DOVAR.data
 .data:
@@ -124,9 +127,9 @@ MCREATE 'DOCON', DOCON
 	push ebx
 NEXT
 
-CONSTANT 'F_HIDDEN', __F_HIDDEN, F_HIDDEN
-CONSTANT 'F_IMMEDIATE', __F_IMMEDIATE, F_IMMEDIATE
-CONSTANT 'F_COMPILE_ONLY', __F_COMPILE_ONLY, F_COMPILE_ONLY
+CONSTANT 'F_HIDDEN', F_HIDDEN, _F_HIDDEN
+CONSTANT 'F_IMMEDIATE', F_IMMEDIATE, _F_IMMEDIATE
+CONSTANT 'F_COMPILE_ONLY', F_COMPILE_ONLY, _F_COMPILE_ONLY
 
 
 
@@ -686,27 +689,37 @@ CODE
 NEXT
 
 MCREATE ',', COMMA
-CODE
-	pop eax
-	mov edi, [HERE.var]
-	stosd
-	mov [HERE.var], edi
-NEXT
+WORDDEF
+	dd COMPILE_WORDLIST.code
+	dd FETCH.code
+	dd DUP.code
+	dd STORE.code
+	dd CELLPLUS.code
+	dd COMPILE_WORDLIST.code
+	dd STORE.code
+	dd EXIT.code
 
 MCREATE 'C,', CCOMMA
-CODE
-	pop eax
-	mov edi, [HERE.var]
-	stosb
-	mov [HERE.var], edi
-NEXT
+WORDDEF
+	dd COMPILE_WORDLIST.code
+	dd FETCH.code
+	dd DUP.code
+	dd CSTORE.code
+	dd CHARPLUS.code
+	dd COMPILE_WORDLIST.code
+	dd STORE.code
+	dd EXIT.code
 
 MCREATE 'ALIGN', _ALIGN
-CODE
-	mov eax, [HERE.var]
-	add eax, 3
-	and eax, ~3
-	mov [HERE.var], eax
+WORDDEF
+	dd COMPILE_WORDLIST.code
+	dd FETCH.code
+	dd LIT.code, 3
+	dd ADD.code
+	dd LIT.code, ~3
+	dd AND.code
+	dd COMPILE_WORDLIST.code
+	dd STORE.code
 
 MCREATE 'CREATE', CREATE
 WORDDEF
@@ -897,9 +910,17 @@ WORDDEF
 	dd DUP.code
 	dd ZBRANCH.code
 	dd .END-$
-	dd TWODUP.code
-	dd FIND.code
+	dd FORTH_WORDLIST.code
+	dd SEARCH_WORDLIST.code
 	
+	dd ZBRANCH.code
+	dd .SKIP-$
+		
+	dd EXECUTE.code
+	
+	dd BRANCH.code
+	dd .START-$
+.SKIP:
 	dd BRANCH.code
 	dd .START-$
 .END:
@@ -936,13 +957,90 @@ WORDDEF
 
 MCREATE 'SEARCH-WORDLIST', SEARCH_WORDLIST
 WORDDEF
-	dd TOLATEST.code
-	dd DUP.code
-	dd CELLPLUS.code
-	dd CHARPLUS.code
-	dd 
+	dd TOLATEST.code 	;(c-addr, u, latest)
+.START:
 
-
+	dd FETCH.code 		;(c-addr, u, latest)
+	dd DUP.code 		;(c-addr, u, latest, latest)
+	dd ZBRANCH.code 	;(c-addr, u, latest)
+	dd .NOTFOUND-$
+	dd DUP.code 		;(c-addr, u, latest, latest)
+	dd TOR.code 		;(c-addr, u, latest)				;(R: latest)
+	dd CELLPLUS.code	;(c-addr, u, latest+flag)				;(R: latest)
+	dd CHARPLUS.code	;(c-addr, u, latest+len)				;(R: latest)
+	dd DUP.code			;(c-addr, u, latest+len, latest+len)				;(R: latest)
+	dd CFETCH.code		;(c-addr, u, latest+len, len)				;(R: latest)
+	dd SWAP.code		;(c-addr, u, len, latest+len)				;(R: latest)
+	dd CHARPLUS.code	;(c-addr, u, len, c-addr)				;(R: latest)
+	dd SWAP.code		;(c-addr, u, c-addr, len)				;(R: latest)
+	dd TWOOVER.code		;(c-addr, u, c-addr, len, c-addr, u)				;(R: latest)
+	dd ROT.code			;(c-addr, u, c-addr, c-addr, u, len)				;(R: latest)
+	dd DUP.code			;(c-addr, u, c-addr, c-addr, u, len, len)				;(R: latest)
+	dd ROT.code			;(c-addr, u, c-addr, c-addr, len, len, u)				;(R: latest)
+	dd EQUAL.code		;(c-addr, u, c-addr, c-addr, len, e)				;(R: latest)
+	dd ZBRANCH.code		;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd .DIFCOUNT-$
+	dd ONEMINUS.code
+.COMPARE:					;(c-addr, u, c-addr, c-addr, len, len)				;(R: latest)
+	dd DUP.code				;(c-addr, u, c-addr, c-addr, len, len)				;(R: latest)
+	dd TWOOVER.code			;(c-addr, u, c-addr, c-addr, len, len, c-addr, c-addr)				;(R: latest)
+	dd CFETCH.code			;(c-addr, u, c-addr, c-addr, len, len, c-addr, c)				;(R: latest)
+	dd SWAP.code			;(c-addr, u, c-addr, c-addr, len, len, c, c-addr)				;(R: latest)
+	dd CFETCH.code			;(c-addr, u, c-addr, c-addr, len, len, c, c)				;(R: latest)
+	dd EQUAL.code			;(c-addr, u, c-addr, c-addr, len, len, e)				;(R: latest)
+	dd ZBRANCH.code
+	dd .DIFCONTENT-$		;(c-addr, u, c-addr, c-addr, len, len)				;(R: latest)
+	dd ZBRANCH.code			;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd .FOUND-$				
+	dd ONEMINUS.code		;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd TOR.code				;(c-addr, u, c-addr, c-addr)				;(R: latest, len)
+	dd CHARPLUS.code		;(c-addr, u, c-addr, c-addr)				;(R: latest, len)
+	dd SWAP.code			;(c-addr, u, c-addr, c-addr)				;(R: latest, len)
+	dd CHARPLUS.code		;(c-addr, u, c-addr, c-addr)				;(R: latest, len)
+	dd SWAP.code			;(c-addr, u, c-addr, c-addr)				;(R: latest, len)
+	dd FROMR.code			;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd BRANCH.code			;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd .COMPARE-$
+.DIFCONTENT:			;(c-addr, u, c-addr, c-addr, len, len)				;(R: latest)
+	dd DROP.code		;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+.DIFCOUNT:				;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd DROP.code		;(c-addr, u, c-addr, c-addr)				;(R: latest)
+	dd TWODROP.code		;(c-addr, u)				;(R: latest)
+	dd FROMR.code		;(c-addr, u, latest)
+	dd BRANCH.code		;(c-addr, u, latest)
+	dd .START-$
+.NOTFOUND:				;(c-addr, u, latest)
+	dd DROP.code		;(c-addr, u)
+	dd TWODROP.code		;()
+	dd LIT.code, 0		;(0)
+	dd EXIT.code
+.FOUND:					;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
+	dd TWODROP.code		;(c-addr, u, c-addr)				;(R: latest)
+	dd TWODROP.code		;(c-addr)				;(R: latest)
+	dd DROP.code		;()				;(R: latest)
+	dd FROMR.code		;(latest)
+	dd DUP.code			;(latest, latest)
+	dd CELLPLUS.code	;(latest, latest+f)
+	dd CFETCH.code		;(latest, flag)
+	dd F_IMMEDIATE.code	;(latest, flag, immed)
+	dd AND.code			;(latest, is_immed)
+	dd ZBRANCH.code		;(latest)
+	dd .NOTIMMEDIATE-$
+	dd LIT.code, 1		;(latest, 1)
+	dd BRANCH.code
+	dd .IMMEDIATE-$
+.NOTIMMEDIATE:
+	dd LIT.code, -1		;(latest, -1)
+.IMMEDIATE:
+	dd SWAP.code		;(1| -1, latest)
+	dd TOCFA.code		;(1| -1, xt)
+	dd SWAP.code		;(xt, 1| -1)
+	dd EXIT.code
+	
+MCREATE 'EXECUTE', EXECUTE
+CODE
+	pop eax
+	jmp [eax]
 
 MCREATE 'TEST', TEST
 WORDDEF
@@ -952,7 +1050,25 @@ WORDDEF
 	
 	dd CANONICAL.code
 	dd SHUTDOWN.code
-
+	
+MCREATE '.S', PRINTSTACK
+WORDDEF
+	dd DSPFETCH.code
+.START:
+	dd DUP.code
+	dd FETCH.code
+	dd DOT.code
+	dd LIT.code, 32, EMIT.code
+	dd CELLPLUS.code
+	dd DUP.code
+	dd DZ.code
+	dd GE.code
+	dd ZBRANCH.code
+	dd .START-$
+	dd DROP.code
+	dd LIT.code, 10, EMIT.code
+	dd EXIT.code
+	
 MCREATE 'QUIT', QUIT
 WORDDEF
 	dd RZ.code
