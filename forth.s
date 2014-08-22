@@ -96,9 +96,7 @@ NEXT
 cold_start:
 	dd TEST.code
 
-VARIABLE 'HERE', HERE
 VARIABLE 'STATE', STATE
-VARIABLE 'LATEST', LATEST, QUIT
 VARIABLE 'S0', SZ
 VARIABLE 'BASE', BASE, 0x0A
 
@@ -713,12 +711,14 @@ CODE
 MCREATE 'CREATE', CREATE
 WORDDEF
 	dd HERE.code
-	dd LATEST.code
+	dd COMPILE_WORDLIST.code
+	dd TOLATEST.code
 	dd FETCH.code
 	dd _ALIGN.code
 	dd COMMA.code
 	dd DUP.code
-	dd LATEST.code
+	dd COMPILE_WORDLIST.code
+	dd TOLATEST.code
 	dd STORE.code
 	dd LIT.code, 0
 	dd CCOMMA.code
@@ -747,19 +747,23 @@ CODE
 PUSHRSP esi
 	mov ecx, [LINE_BUFFER_COUNT.data]
 	mov eax, [SIN.data]
+	add ecx, 1
 	sub ecx, eax
 	mov ebx, [LINE_BUFFER.data]
 	add ebx, eax
 	mov edi, ebx
 	mov al, ' '
 	repe SCASB
-	sub ecx, 1
+	add ecx, 1
 	sub edi, 1
 	mov ebx, edi
 	repne SCASB
-	sub ecx, 2
+;	add ecx, 1
 	sub edi, 1
-	mov [SIN.data], ecx
+	mov eax, [LINE_BUFFER_COUNT.data]
+	sub eax, ecx
+	mov [SIN.data], eax
+	mov al, ' '
 	mov ecx, edi
 	sub ecx, ebx
 	mov [.buflen], ecx
@@ -806,6 +810,10 @@ WORDDEF
 	dd ZBRANCH.code
 	dd .2-$
 	dd DROP.code
+	dd TWODUP.code
+	dd LT.code
+	dd ZBRANCH.code
+	dd .1-$
 	dd LIT.code, 8
 	dd EMIT.code
 	dd LIT.code, 32
@@ -869,7 +877,8 @@ CODE
 NEXT
 
 MCREATE 'INTERPRET', INTERPRET
-CODE
+WORDDEF
+	dd LIT.code, ' ', LIT.code, '>', EMIT.code, EMIT.code
 	dd LIT.code, 0
 	dd LIT.code, SOURCE_ID.data
 	dd STORE.code
@@ -878,44 +887,68 @@ CODE
 	dd ACCEPT.code
 	dd LINE_BUFFER_COUNT.code
 	dd STORE.code
+	dd LIT.code, 10, EMIT.code
+	dd LIT.code, 0
+	dd SIN.code
+	dd STORE.code
+.START:
+	dd _WORD.code
+	dd COUNT.code
+	dd DUP.code
+	dd ZBRANCH.code
+	dd .END-$
+	dd TWODUP.code
+	dd FIND.code
 	
+	dd BRANCH.code
+	dd .START-$
+.END:
+	dd LIT.code, 10, EMIT.code
+	dd TWODROP.code
+	dd EXIT.code
 	
-NEXT
+VARIABLE 'ACTIVE-WORDLIST', ACTIVE_WORDLIST
+VARIABLE 'COMPILE-WORDLIST', COMPILE_WORDLIST
+
+VARIABLE 'FORTH-WORDLIST', FORTH_WORDLIST
+.LATEST:
+	dd QUIT
+.NEXTWORDLIST:
+	dd 0
+	
+MCREATE 'LATEST', LATEST
+WORDDEF
+	dd ACTIVE_WORDLIST.code
+	dd FETCH.code
+	dd CELLPLUS.code
+	dd EXIT.code
+	
+MCREATE 'HERE', HERE
+WORDDEF
+	dd COMPILE_WORDLIST.code
+	dd FETCH.code
+	dd EXIT.code
+	
+MCREATE '>LATEST', TOLATEST
+WORDDEF
+	dd CELLPLUS.code
+	dd EXIT.code
+
+MCREATE 'SEARCH-WORDLIST', SEARCH_WORDLIST
+WORDDEF
+	dd TOLATEST.code
+	dd DUP.code
+	dd CELLPLUS.code
+	dd CHARPLUS.code
+	dd 
+
+
 
 MCREATE 'TEST', TEST
 WORDDEF
 	dd UNCANONICAL.code
-
-	dd LIT.code, 10
-	dd BASE.code
-	dd STORE.code
 	
-	dd LINE_BUFFER.code
-	dd LIT.code, 4096
-	dd ACCEPT.code
-	dd LINE_BUFFER_COUNT.code
-	dd STORE.code
-	
-	dd LIT.code, 10, EMIT.code
-	dd SIN.code
-	dd FETCH.code
-	dd DOT.code
-	
-	dd _WORD.code
-	dd DUP.code
-	dd COUNT.code
-	dd LIT.code, 10, EMIT.code
-	dd TYPE.code
-	
-	dd LIT.code, 10, EMIT.code
-	dd SIN.code
-	dd FETCH.code
-	dd DOT.code
-	
-	dd _WORD.code
-	dd COUNT.code
-	dd LIT.code, 10, EMIT.code
-	dd TYPE.code
+	dd INTERPRET.code
 	
 	dd CANONICAL.code
 	dd SHUTDOWN.code
