@@ -98,7 +98,7 @@ NEXT
 cold_start:
 	dd QUIT.code
 
-VARIABLE 'STATE', STATE, 1
+VARIABLE 'STATE', STATE, 0
 VARIABLE 'S0', SZ
 VARIABLE 'BASE', BASE, 0x0A
 
@@ -701,10 +701,13 @@ MCREATE ',', COMMA
 WORDDEF
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
+	dd FETCH.code
 	dd DUP.code
+	dd NROT.code
 	dd STORE.code
 	dd CELLPLUS.code
 	dd COMPILE_WORDLIST.code
+	dd FETCH.code
 	dd STORE.code
 	dd EXIT.code
 
@@ -712,10 +715,13 @@ MCREATE 'C,', CCOMMA
 WORDDEF
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
+	dd FETCH.code
 	dd DUP.code
+	dd NROT.code
 	dd CSTORE.code
 	dd CHARPLUS.code
 	dd COMPILE_WORDLIST.code
+	dd FETCH.code
 	dd STORE.code
 	dd EXIT.code
 
@@ -723,24 +729,32 @@ MCREATE 'ALIGN', _ALIGN
 WORDDEF
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
+	dd FETCH.code
 	dd LIT.code, 3
 	dd ADD.code
 	dd LIT.code, ~3
 	dd AND.code
 	dd COMPILE_WORDLIST.code
+	dd FETCH.code
 	dd STORE.code
+	dd EXIT.code
 
-MCREATE 'CREATE', CREATE
+MCREATE 'HEAD,', HEADCOMMA
 WORDDEF
+	dd _ALIGN.code
 	dd HERE.code
 	dd COMPILE_WORDLIST.code
+	dd FETCH.code
 	dd TOLATEST.code
 	dd FETCH.code
-	dd _ALIGN.code
 	dd COMMA.code
+	
 	dd DUP.code
+	
 	dd COMPILE_WORDLIST.code
+	dd FETCH.code
 	dd TOLATEST.code
+		
 	dd STORE.code
 	dd LIT.code, 0
 	dd CCOMMA.code
@@ -756,9 +770,17 @@ WORDDEF
 	dd SWAP.code
 	dd ONEMINUS.code
 	dd DUP.code
+	dd ZEQUAL.code
 	dd ZBRANCH.code
 	dd .1-$
+	dd TWODROP.code
 	dd _ALIGN.code
+	dd COMMA.code
+	dd EXIT.code
+
+MCREATE 'CREATE', CREATE
+WORDDEF
+	dd HEADCOMMA.code
 	dd DOVAR.code
 	dd COMMA.code
 	dd EXIT.code
@@ -900,6 +922,29 @@ WORDDEF
 	dd STORE.code
 	dd EXIT.code
 	
+MCREATE ':', COLON
+WORDDEF
+	dd HEADCOMMA.code
+	dd COLON_NONAME.code
+	dd DROP.code
+	dd EXIT.code
+
+MCREATE ':NONAME', COLON_NONAME
+WORDDEF
+	dd HERE.code
+	dd DOCOL.code
+	dd COMMA.code
+	dd RIGHT_BRACKET.code
+	dd EXIT.code
+	
+MCREATE ';', SEMICOLON, _F_IMMEDIATE
+WORDDEF
+	dd LEFT_BRACKET.code
+	dd LIT.code
+	dd EXIT.code
+	dd COMMA.code
+	dd EXIT.code
+
 MCREATE 'DIGIT?', DIGIT
 WORDDEF
 	dd LIT.code, '0'
@@ -917,7 +962,6 @@ WORDDEF
 	dd FETCH.code
 	dd LT.code
 	dd EXIT.code
-	
 	
 MCREATE '>NUMBER', TONUMBER
 WORDDEF
@@ -972,9 +1016,25 @@ WORDDEF
 	dd QDUP.code
 	dd ZBRANCH.code
 	dd .NUMBER-$
+
+	dd LIT.code, -1
 	
-	dd DROP.code
+	dd EQUAL.code
 	
+	dd ZBRANCH.code
+	dd .IMMEDIATE-$
+	dd STATE.code
+	dd FETCH.code
+	dd ZBRANCH.code
+	dd .IMMEDIATE-$
+	
+	dd NROT.code
+	dd TWODROP.code
+	
+	dd COMMA.code
+	dd BRANCH.code
+	dd .START-$
+.IMMEDIATE:
 	dd NROT.code
 	dd TWODROP.code
 	
@@ -989,8 +1049,15 @@ WORDDEF
 	dd ZEQUAL.code
 	dd ZBRANCH.code
 	dd .ERROR-$
-	
 	dd DROP.code
+	dd STATE.code
+	dd FETCH.code
+	dd ZBRANCH.code
+	dd .START-$
+	dd LIT.code
+	dd LIT.code
+	dd COMMA.code
+	dd COMMA.code
 	
 	dd BRANCH.code
 	dd .START-$
