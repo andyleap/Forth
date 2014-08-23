@@ -96,9 +96,9 @@ NEXT
 
 	align 4, db 0
 cold_start:
-	dd TEST.code
+	dd QUIT.code
 
-VARIABLE 'STATE', STATE
+VARIABLE 'STATE', STATE, 1
 VARIABLE 'S0', SZ
 VARIABLE 'BASE', BASE, 0x0A
 
@@ -391,6 +391,15 @@ CODE
 	push eax
 NEXT
 
+MCREATE '?DUP', QDUP
+CODE
+	mov eax, [esp]
+	test eax, eax
+	jz .AFTER
+	push eax
+.AFTER:
+NEXT
+
 MCREATE '2DUP', TWODUP
 CODE
 	mov eax, [esp+4]
@@ -655,7 +664,7 @@ CODE
 	xor eax, eax
 	mov al, [edi]
 	add edi, eax
-	add edi, 7
+	add edi, 8
 	and edi, ~3
 	push edi
 NEXT
@@ -735,8 +744,7 @@ WORDDEF
 	dd STORE.code
 	dd LIT.code, 0
 	dd CCOMMA.code
-	dd _WORD.code
-	dd COUNT.code
+	dd PARSE_WORD.code
 	dd DUP.code
 	dd CCOMMA.code
 .1:
@@ -755,9 +763,8 @@ WORDDEF
 	dd COMMA.code
 	dd EXIT.code
 	
-MCREATE 'WORD', _WORD
+MCREATE 'PARSE-WORD', PARSE_WORD
 CODE
-PUSHRSP esi
 	mov ecx, [LINE_BUFFER_COUNT.data]
 	mov eax, [SIN.data]
 	add ecx, 1
@@ -769,6 +776,7 @@ PUSHRSP esi
 	repe SCASB
 	add ecx, 1
 	sub edi, 1
+	push edi
 	mov ebx, edi
 	repne SCASB
 ;	add ecx, 1
@@ -776,21 +784,10 @@ PUSHRSP esi
 	mov eax, [LINE_BUFFER_COUNT.data]
 	sub eax, ecx
 	mov [SIN.data], eax
-	mov al, ' '
 	mov ecx, edi
 	sub ecx, ebx
-	mov [.buflen], ecx
-	mov esi, ebx
-	mov edi, .buf
-	rep MOVSB
-	
-	push dword .buflen
-POPRSP esi
+	push ecx	
 NEXT
-.buflen:
-	dd 0
-.buf:
-	times 32 db 0
 
 MCREATE '.', DOT
 WORDDEF
@@ -889,6 +886,67 @@ CODE
 	int 80h
 NEXT
 
+MCREATE ']', RIGHT_BRACKET
+WORDDEF
+	dd LIT.code, 1
+	dd STATE.code
+	dd STORE.code
+	dd EXIT.code
+	
+MCREATE '[', LEFT_BRACKET, _F_IMMEDIATE
+WORDDEF
+	dd LIT.code, 0
+	dd STATE.code
+	dd STORE.code
+	dd EXIT.code
+	
+MCREATE 'DIGIT?', DIGIT
+WORDDEF
+	dd LIT.code, '0'
+	dd SUB.code
+	dd LIT.code, 9
+	dd OVER.code
+	dd LT.code
+	dd ZBRANCH.code
+	dd .LTA-$
+	dd LIT.code, 7
+	dd SUB.code
+.LTA:
+	dd DUP.code
+	dd BASE.code
+	dd FETCH.code
+	dd LT.code
+	dd EXIT.code
+	
+	
+MCREATE '>NUMBER', TONUMBER
+WORDDEF
+.START:
+	dd DUP.code
+	dd ZBRANCH.code
+	dd .END-$
+	dd OVER.code
+	dd CFETCH.code
+	dd DIGIT.code
+	dd ZBRANCH.code
+	dd .END-$
+	dd TOR.code
+	dd ROT.code
+	dd BASE.code
+	dd FETCH.code
+	dd MUL.code
+	dd FROMR.code
+	dd ADD.code
+	dd NROT.code
+	dd ONEMINUS.code
+	dd SWAP.code
+	dd ONEPLUS.code
+	dd SWAP.code
+	dd BRANCH.code
+	dd .START-$
+.END:
+	dd EXIT.code
+
 MCREATE 'INTERPRET', INTERPRET
 WORDDEF
 	dd LIT.code, ' ', LIT.code, '>', EMIT.code, EMIT.code
@@ -905,37 +963,88 @@ WORDDEF
 	dd SIN.code
 	dd STORE.code
 .START:
-	dd _WORD.code
-	dd COUNT.code
+	dd PARSE_WORD.code
 	dd DUP.code
 	dd ZBRANCH.code
 	dd .END-$
-	dd FORTH_WORDLIST.code
-	dd SEARCH_WORDLIST.code
+	dd FIND.code
 	
+	dd QDUP.code
 	dd ZBRANCH.code
-	dd .SKIP-$
-		
-	dd EXECUTE.code
+	dd .NUMBER-$
 	
+	dd DROP.code
+	
+	dd NROT.code
+	dd TWODROP.code
+	
+	dd EXECUTE.code
+		
 	dd BRANCH.code
 	dd .START-$
-.SKIP:
+.NUMBER:
+	dd LIT.code, 0
+	dd NROT.code
+	dd TONUMBER.code
+	dd ZEQUAL.code
+	dd ZBRANCH.code
+	dd .ERROR-$
+	
+	dd DROP.code
+	
 	dd BRANCH.code
 	dd .START-$
 .END:
 	dd LIT.code, 10, EMIT.code
 	dd TWODROP.code
 	dd EXIT.code
+.ERROR:
+	dd EXIT.code
 	
-VARIABLE 'ACTIVE-WORDLIST', ACTIVE_WORDLIST
-VARIABLE 'COMPILE-WORDLIST', COMPILE_WORDLIST
+VARIABLE 'ACTIVE-WORDLIST', ACTIVE_WORDLIST, FORTH_WORDLIST.data
+VARIABLE 'COMPILE-WORDLIST', COMPILE_WORDLIST, FORTH_WORDLIST.data
 
 VARIABLE 'FORTH-WORDLIST', FORTH_WORDLIST
 .LATEST:
 	dd QUIT
 .NEXTWORDLIST:
 	dd 0
+	
+MCREATE 'FIND', FIND
+WORDDEF
+	dd TWODUP.code
+	dd ACTIVE_WORDLIST.code
+	dd FETCH.code
+.START:
+	dd DUP.code
+	dd ZBRANCH.code
+	dd .NOTFOUND-$	
+	dd DUP.code
+	dd TOR.code
+	dd SEARCH_WORDLIST.code
+	dd QDUP.code
+	dd ZEQUAL.code
+	dd ZBRANCH.code
+	dd .FOUND-$
+	dd TWODUP.code
+	dd FROMR.code
+	dd LIT.code, 2
+	dd CELLS.code
+	dd ADD.code
+	dd FETCH.code
+	dd BRANCH.code
+	dd .START-$
+.NOTFOUND:
+	dd DROP.code
+	dd TWODROP.code
+	dd LIT.code, 0
+	dd EXIT.code
+.FOUND:
+	dd FROMR.code
+	dd DROP.code
+	dd EXIT.code
+
+	
 	
 MCREATE 'LATEST', LATEST
 WORDDEF
@@ -948,6 +1057,7 @@ MCREATE 'HERE', HERE
 WORDDEF
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
+	dd FETCH.code
 	dd EXIT.code
 	
 MCREATE '>LATEST', TOLATEST
@@ -959,7 +1069,6 @@ MCREATE 'SEARCH-WORDLIST', SEARCH_WORDLIST
 WORDDEF
 	dd TOLATEST.code 	;(c-addr, u, latest)
 .START:
-
 	dd FETCH.code 		;(c-addr, u, latest)
 	dd DUP.code 		;(c-addr, u, latest, latest)
 	dd ZBRANCH.code 	;(c-addr, u, latest)
@@ -1037,23 +1146,21 @@ WORDDEF
 	dd SWAP.code		;(xt, 1| -1)
 	dd EXIT.code
 	
+	
+	
 MCREATE 'EXECUTE', EXECUTE
 CODE
 	pop eax
 	jmp [eax]
-
-MCREATE 'TEST', TEST
-WORDDEF
-	dd UNCANONICAL.code
-	
-	dd INTERPRET.code
-	
-	dd CANONICAL.code
-	dd SHUTDOWN.code
 	
 MCREATE '.S', PRINTSTACK
 WORDDEF
 	dd DSPFETCH.code
+	dd DUP.code
+	dd DZ.code
+	dd LT.code
+	dd ZBRANCH.code
+	dd .END-$
 .START:
 	dd DUP.code
 	dd FETCH.code
@@ -1065,6 +1172,7 @@ WORDDEF
 	dd GE.code
 	dd ZBRANCH.code
 	dd .START-$
+.END:
 	dd DROP.code
 	dd LIT.code, 10, EMIT.code
 	dd EXIT.code
@@ -1074,5 +1182,7 @@ WORDDEF
 	dd RZ.code
 	dd RSPSTORE.code
 	dd UNCANONICAL.code
-;    dd INTERPRET.code
-	dd BRANCH, -8
+.LOOP:
+    dd INTERPRET.code
+	dd BRANCH.code
+	dd .LOOP-$
