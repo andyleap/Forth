@@ -754,7 +754,7 @@ WORDDEF
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
 	dd TOLATEST.code
-		
+	
 	dd STORE.code
 	dd LIT.code, 0
 	dd CCOMMA.code
@@ -922,6 +922,34 @@ WORDDEF
 	dd STORE.code
 	dd EXIT.code
 	
+MCREATE 'LITERAL', LITERAL, _F_IMMEDIATE
+WORDDEF
+	dd LIT.code, LIT.code
+	dd COMMA.code
+	dd COMMA.code
+	dd EXIT.code
+
+MCREATE "[']", CTICK, _F_IMMEDIATE
+WORDDEF
+	dd LIT.code, LIT.code
+	dd COMMA.code
+	dd EXIT.code
+	
+MCREATE "'", TICK
+WORDDEF
+	dd PARSE_WORD.code
+	dd FIND.code
+	dd TWOSWAP.code
+	dd TWODROP.code
+	dd PRINTSTACK.code
+	dd ZBRANCH.code
+	dd .EXIT-$
+	dd EXIT.code
+.EXIT:
+	dd DROP.code
+	dd LIT.code, 0
+	dd EXIT.code
+	
 MCREATE ':', COLON
 WORDDEF
 	dd HEADCOMMA.code
@@ -962,6 +990,7 @@ WORDDEF
 	dd FETCH.code
 	dd LT.code
 	dd EXIT.code
+	
 	
 MCREATE '>NUMBER', TONUMBER
 WORDDEF
@@ -1111,7 +1140,28 @@ WORDDEF
 	dd DROP.code
 	dd EXIT.code
 
+MCREATE 'HIDDEN', HIDDEN
+WORDDEF
+	dd FROMCFA.code
+	dd CELLPLUS.code
+	dd DUP.code
+	dd CFETCH.code
+	dd F_HIDDEN.code
+	dd XOR.code
+	dd SWAP.code
+	dd CSTORE.code
 	
+MCREATE 'IMMEDIATE', IMMEDIATE, _F_IMMEDIATE
+WORDDEF
+	dd LATEST.code
+	dd FETCH.code
+	dd CELLPLUS.code
+	dd DUP.code
+	dd CFETCH.code
+	dd F_IMMEDIATE.code
+	dd XOR.code
+	dd SWAP.code
+	dd CSTORE.code
 	
 MCREATE 'LATEST', LATEST
 WORDDEF
@@ -1143,6 +1193,13 @@ WORDDEF
 	dd DUP.code 		;(c-addr, u, latest, latest)
 	dd TOR.code 		;(c-addr, u, latest)				;(R: latest)
 	dd CELLPLUS.code	;(c-addr, u, latest+flag)				;(R: latest)
+	dd DUP.code			;(c-addr, u, latest+flag, latest+flag)				;(R: latest)
+	dd CFETCH.code		;(c-addr, u, latest+flag, flag)				;(R: latest)
+	dd F_HIDDEN.code	;(c-addr, u, latest+flag, flag, F_HIDDEN)				;(R: latest)
+	dd AND.code			;(c-addr, u, latest+flag, flag&F_HIDDEN)				;(R: latest)
+	dd ZEQUAL.code		;(c-addr, u, latest+flag, ZE)				;(R: latest)
+	dd ZBRANCH.code		;(c-addr, u, latest+flag)				;(R: latest)
+	dd .HIDDEN-$
 	dd CHARPLUS.code	;(c-addr, u, latest+len)				;(R: latest)
 	dd DUP.code			;(c-addr, u, latest+len, latest+len)				;(R: latest)
 	dd CFETCH.code		;(c-addr, u, latest+len, len)				;(R: latest)
@@ -1177,6 +1234,11 @@ WORDDEF
 	dd FROMR.code			;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
 	dd BRANCH.code			;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
 	dd .COMPARE-$
+.HIDDEN:				;(c-addr, u, latest+flag)				;(R: latest)
+	dd DROP.code
+	dd FROMR.code
+	dd BRANCH.code
+	dd .START-$
 .DIFCONTENT:			;(c-addr, u, c-addr, c-addr, len, len)				;(R: latest)
 	dd DROP.code		;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
 .DIFCOUNT:				;(c-addr, u, c-addr, c-addr, len)				;(R: latest)
