@@ -699,6 +699,7 @@ NEXT
 
 MCREATE ',', COMMA
 WORDDEF
+	dd PRINTSTACK.code
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
 	dd FETCH.code
@@ -1150,6 +1151,7 @@ WORDDEF
 	dd XOR.code
 	dd SWAP.code
 	dd CSTORE.code
+	dd EXIT.code
 	
 MCREATE 'IMMEDIATE', IMMEDIATE, _F_IMMEDIATE
 WORDDEF
@@ -1162,6 +1164,7 @@ WORDDEF
 	dd XOR.code
 	dd SWAP.code
 	dd CSTORE.code
+	dd EXIT.code
 	
 MCREATE 'LATEST', LATEST
 WORDDEF
