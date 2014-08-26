@@ -699,44 +699,37 @@ NEXT
 
 MCREATE ',', COMMA
 WORDDEF
-	dd PRINTSTACK.code
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd FETCH.code
 	dd DUP.code
 	dd NROT.code
 	dd STORE.code
 	dd CELLPLUS.code
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd STORE.code
 	dd EXIT.code
 
 MCREATE 'C,', CCOMMA
 WORDDEF
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd FETCH.code
 	dd DUP.code
 	dd NROT.code
 	dd CSTORE.code
 	dd CHARPLUS.code
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd STORE.code
 	dd EXIT.code
 
 MCREATE 'ALIGN', _ALIGN
 WORDDEF
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd FETCH.code
 	dd LIT.code, 3
 	dd ADD.code
 	dd LIT.code, ~3
 	dd AND.code
-	dd COMPILE_WORDLIST.code
-	dd FETCH.code
+	dd HERE.code
 	dd STORE.code
 	dd EXIT.code
 
@@ -744,6 +737,7 @@ MCREATE 'HEAD,', HEADCOMMA
 WORDDEF
 	dd _ALIGN.code
 	dd HERE.code
+	dd FETCH.code
 	dd COMPILE_WORDLIST.code
 	dd FETCH.code
 	dd TOLATEST.code
@@ -961,6 +955,7 @@ WORDDEF
 MCREATE ':NONAME', COLON_NONAME
 WORDDEF
 	dd HERE.code
+	dd FETCH.code
 	dd DOCOL.code
 	dd COMMA.code
 	dd RIGHT_BRACKET.code
@@ -1048,6 +1043,7 @@ WORDDEF
 	dd .NUMBER-$
 
 	dd LIT.code, -1
+	
 	
 	dd EQUAL.code
 	
@@ -1168,7 +1164,7 @@ WORDDEF
 	
 MCREATE 'LATEST', LATEST
 WORDDEF
-	dd ACTIVE_WORDLIST.code
+	dd COMPILE_WORDLIST.code
 	dd FETCH.code
 	dd CELLPLUS.code
 	dd EXIT.code
@@ -1176,7 +1172,6 @@ WORDDEF
 MCREATE 'HERE', HERE
 WORDDEF
 	dd COMPILE_WORDLIST.code
-	dd FETCH.code
 	dd FETCH.code
 	dd EXIT.code
 	
