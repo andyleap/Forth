@@ -171,7 +171,7 @@ WORDDEF
 MCREATE 'CELL-', CELLMINUS
 WORDDEF
 	dd LIT.code, 4
-	dd ADD.code
+	dd SUB.code
 	dd EXIT.code
 
 MCREATE 'CELLS', CELLS
@@ -936,13 +936,22 @@ WORDDEF
 	dd FIND.code
 	dd TWOSWAP.code
 	dd TWODROP.code
-	dd PRINTSTACK.code
 	dd ZBRANCH.code
 	dd .EXIT-$
 	dd EXIT.code
 .EXIT:
 	dd DROP.code
 	dd LIT.code, 0
+	dd EXIT.code
+	
+MCREATE 'POSTPONE', POSTPONE, _F_IMMEDIATE
+WORDDEF
+	dd LIT.code, LIT.code
+	dd COMMA.code
+	dd TICK.code
+	dd COMMA.code
+	dd LIT.code, COMMA.code
+	dd COMMA.code
 	dd EXIT.code
 	
 MCREATE ':', COLON
@@ -1302,6 +1311,90 @@ WORDDEF
 	dd DROP.code
 	dd LIT.code, 10, EMIT.code
 	dd EXIT.code
+
+MCREATE 'DEBUG', DEBUG
+WORDDEF
+	dd TICK.code
+	dd DUP.code
+	dd NAME.code
+	dd LIT.code, 10
+	dd EMIT.code
+	dd DUP.code
+	dd FETCH.code
+	dd DOCOL.code
+	dd EQUAL.code
+	dd ZBRANCH.code
+	dd .EXIT-$
+
+.DECOMPLOOP:
+	dd CELLPLUS.code
+	dd DUP.code
+	dd FETCH.code
+	dd DUP.code
+	dd NAME.code
+	dd LIT.code, ' '
+	dd EMIT.code
+	
+	dd DUP.code
+
+	dd LIT.code, EXIT.code
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .EXIT-$
+	
+	dd DUP.code
+	dd LIT.code, LIT.code
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .LIT-$
+	
+	dd DUP.code
+	dd LIT.code, BRANCH.code
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .LIT-$
+
+	dd DUP.code
+	dd LIT.code, ZBRANCH.code
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .LIT-$
+	
+	dd DROP.code
+	
+	dd BRANCH.code
+	dd .DECOMPLOOP-$
+
+.LIT:
+	dd DROP.code
+	dd CELLPLUS.code
+	dd DUP.code
+	dd FETCH.code
+	dd DOT.code
+	dd LIT.code, ' '
+	dd EMIT.code
+	dd BRANCH.code
+	dd .DECOMPLOOP-$
+
+	
+	
+.EXIT:
+	dd DROP.code
+	dd DROP.code
+	dd EXIT.code
+	
+MCREATE 'NAME', NAME
+WORDDEF
+	dd FROMCFA.code
+	dd CELLPLUS.code
+	dd CHARPLUS.code
+	dd DUP.code
+	dd CFETCH.code
+	dd SWAP.code
+	dd CHARPLUS.code
+	dd SWAP.code
+	dd TYPE.code
+	dd EXIT.code
 	
 MCREATE 'QUIT', QUIT
 WORDDEF
@@ -1312,3 +1405,4 @@ WORDDEF
     dd INTERPRET.code
 	dd BRANCH.code
 	dd .LOOP-$
+
