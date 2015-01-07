@@ -127,6 +127,17 @@ MCREATE 'DOCON', DOCON
 	push ebx
 NEXT
 
+MCREATE 'DODOES', DODOES
+	dd DOVAR.data
+.data:
+	PUSHRSP esi
+	pop esi
+	add eax, 4
+	push eax
+	add esi, 3
+	and esi, ~3
+NEXT
+
 CONSTANT 'F_HIDDEN', F_HIDDEN, _F_HIDDEN
 CONSTANT 'F_IMMEDIATE', F_IMMEDIATE, _F_IMMEDIATE
 CONSTANT 'F_COMPILE_ONLY', F_COMPILE_ONLY, _F_COMPILE_ONLY
@@ -780,6 +791,30 @@ WORDDEF
 	dd COMMA.code
 	dd EXIT.code
 	
+MCREATE 'DOES>', DOES, _F_IMMEDIATE
+WORDDEF
+	dd LIT.code, DOESLATER.code
+	dd COMMA.code
+	dd LIT.code, 0xE8
+	dd CCOMMA.code
+	dd DODOES.code
+	dd HERE.code
+	dd FETCH.code
+	dd CELLPLUS.code
+	dd SUB.code
+	dd COMMA.code
+	dd _ALIGN.code
+	dd EXIT.code
+
+MCREATE '(DOES>)', DOESLATER
+WORDDEF
+	dd FROMR.code
+	dd LATEST.code
+	dd FETCH.code
+	dd TOCFA.code
+	dd STORE.code
+	dd EXIT.code
+	
 MCREATE 'PARSE-WORD', PARSE_WORD
 CODE
 	mov ecx, [LINE_BUFFER_COUNT.data]
@@ -820,7 +855,17 @@ WORDDEF
 .1:
 	dd DROP.code
 .2:
+	dd DUP.code
+	dd LIT.code, 9
+	dd LE.code
+	dd ZBRANCH.code
+	dd .3-$
 	dd LIT.code, '0'
+	dd ADD.code
+	dd EMIT.code
+	dd EXIT.code
+.3:
+	dd LIT.code, 'A'-10
 	dd ADD.code
 	dd EMIT.code
 	dd EXIT.code
@@ -1112,6 +1157,8 @@ VARIABLE 'FORTH-WORDLIST', FORTH_WORDLIST
 .NEXTWORDLIST:
 	dd 0
 	
+MCREATE 'WORDLIST', WORDLIST
+	
 MCREATE 'FIND', FIND
 WORDDEF
 	dd TWODUP.code
@@ -1361,6 +1408,12 @@ WORDDEF
 	dd ZBRANCH.code
 	dd .LIT-$
 	
+	dd DUP.code
+	dd LIT.code, DOESLATER.code
+	dd NEQUAL.code
+	dd ZBRANCH.code
+	dd .DOESLATER-$
+	
 	dd DROP.code
 	
 	dd BRANCH.code
@@ -1376,9 +1429,34 @@ WORDDEF
 	dd EMIT.code
 	dd BRANCH.code
 	dd .DECOMPLOOP-$
+	
+.DOESLATER:
+	dd LIT.code, 16
+	dd BASE.code
+	dd STORE.code
+	dd DROP.code
+	dd CELLPLUS.code
+	dd DUP.code
+	dd CFETCH.code
+	dd DOT.code
+	dd LIT.code, ' '
+	dd EMIT.code
+	dd CHARPLUS.code
+	dd DUP.code
+	dd FETCH.code
+	dd DOT.code
+	dd LIT.code, ' '
+	dd EMIT.code
+	dd LIT.code, 3
+	dd ADD.code
+	dd LIT.code, ~3
+	dd AND.code
+	dd LIT.code, 10
+	dd BASE.code
+	dd STORE.code
+	dd BRANCH.code
+	dd .DECOMPLOOP-$
 
-	
-	
 .EXIT:
 	dd DROP.code
 	dd DROP.code
