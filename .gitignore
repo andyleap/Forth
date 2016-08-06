@@ -1,3 +1,5 @@
 *.l
 *.o
 forth
+forth.bin
+.*
